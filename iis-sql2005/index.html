@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Celtics Hub — 2026 Season Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #007A33; --green-light: #4ade80; --bg: #0a0c0a; --surface: #0f120f;
+      --card: #141914; --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #636860;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    
+    /* NEW: Schedule/Playoff Header */
+    .season-tracker { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+    .tracker-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; }
+    .tracker-title { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; margin-bottom: 10px; }
+    
+    .last-games { display: flex; gap: 10px; }
+    .game-chip { background: var(--card); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; flex: 1; text-align: center; }
+    .win { color: var(--green-light); font-weight: bold; }
+    .loss { color: #f87171; font-weight: bold; }
+    
+    .playoff-countdown { display: flex; align-items: center; justify-content: space-around; height: 60px; }
+    .count-item { text-align: center; }
+    .count-val { font-family: 'Bebas Neue'; font-size: 32px; line-height: 1; display: block; }
+    .count-lbl { font-size: 9px; color: var(--muted); }
+
+    /* Previous Roster Styles */
+    .header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; }
+    .header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 50px; line-height: 0.9; margin: 0; }
+    .header h1 span { color: var(--green); }
+    .controls { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 10px 20px; color: #fff; flex-grow: 1; outline: none; }
+    .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .player-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 15px; transition: 0.2s; cursor: pointer; }
+    .player-card:hover { border-color: var(--green); }
+    .pc-num { font-family: 'Bebas Neue'; font-size: 30px; color: var(--green); }
+    .pc-name { font-weight: 600; margin: 5px 0; }
+    .pc-stats { display: flex; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; font-family: 'DM Mono'; font-size: 13px; gap: 15px; }
+    .stat-lbl { font-size: 9px; color: var(--muted); display: block; }
+
+    /* MVP Contenders */
+    .mvp-section { margin-top: 40px; }
+    .mvp-title { font-family: 'Bebas Neue'; font-size: 28px; letter-spacing: 1px; margin-bottom: 4px; }
+    .mvp-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    .mvp-list { display: flex; flex-direction: column; gap: 8px; }
+    .mvp-row { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; transition: border-color .2s; }
+    .mvp-row:hover { border-color: var(--green); }
+    .mvp-rank { font-family: 'Bebas Neue'; font-size: 26px; color: var(--muted); width: 28px; text-align: center; flex-shrink: 0; }
+    .mvp-rank.gold   { color: #f5c518; }
+    .mvp-rank.silver { color: #adb5bd; }
+    .mvp-rank.bronze { color: #cd7f32; }
+    .mvp-info { flex: 1; min-width: 0; }
+    .mvp-name { font-weight: 600; font-size: 15px; }
+    .mvp-team { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .mvp-stats { display: flex; gap: 18px; font-family: 'DM Mono'; font-size: 13px; }
+    .mvp-stat { text-align: center; }
+    .mvp-stat span { display: block; font-size: 9px; color: var(--muted); margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="season-tracker">
+    <div class="tracker-box">
+      <div class="tracker-title">Last 3 Games</div>
+      <div class="last-games" id="last-games">
+        <div class="game-chip" style="color:var(--muted)">—</div>
+        <div class="game-chip" style="color:var(--muted)">—</div>
+        <div class="game-chip" style="color:var(--muted)">—</div>
+      </div>
+    </div>
+    <div class="tracker-box">
+      <div class="tracker-title">Road to Playoffs</div>
+      <div class="playoff-countdown">
+        <div class="count-item"><span class="count-val" id="sched-played">—</span><span class="count-lbl">PLAYED</span></div>
+        <div class="count-item" style="color: var(--green-light);"><span class="count-val" id="sched-remaining">—</span><span class="count-lbl">REMAINING</span></div>
+        <div class="count-item"><span class="count-val" id="sched-playoff">—</span><span class="count-lbl">START DATE</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="header">
+    <h1>Boston<br><span>Celtics</span></h1>
+    <div style="font-family: 'Bebas Neue'; font-size: 32px;">2025-26</div>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="search" class="search-bar" placeholder="Search roster..." oninput="render()">
+  </div>
+
+  <div class="roster-grid" id="grid"></div>
+  <div class="mvp-section">
+    <div class="mvp-title">🏆 MVP Contenders</div>
+    <div class="mvp-sub">Source: Kia MVP Ladder (NBA.com) — updates weekly</div>
+    <div class="mvp-list" id="mvp-list">
+      <p style="color:var(--muted);font-size:13px">Loading...</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+
+async function loadSchedule() {
+  try {
+    const res  = await fetch('/api/schedule');
+    if (!res.ok) throw new Error('Schedule fetch failed');
+    const data = await res.json();
+
+    document.getElementById('sched-played').textContent    = data.played;
+    document.getElementById('sched-remaining').textContent = data.remaining;
+    document.getElementById('sched-playoff').textContent   = data.playoffStart;
+
+    const resultClass = { W: 'win', L: 'loss' };
+    document.getElementById('last-games').innerHTML = data.lastGames.map(g => `
+      <div class="game-chip">
+        <span class="${resultClass[g.result]}">${g.result}</span> ${g.score}<br>
+        <small>${g.isHome ? 'vs' : '@'} ${g.opp}</small>
+      </div>`).join('');
+  } catch (e) {
+    console.error('Schedule load failed', e);
+    document.getElementById('last-games').innerHTML =
+      '<div style="color:var(--muted);font-size:12px">Unavailable</div>';
+  }
+}
+
+async function loadMvp() {
+  try {
+    const res = await fetch('/api/mvp');
+    if (!res.ok) throw new Error('MVP fetch failed');
+    const contenders = await res.json();
+    const rankClass = ['gold', 'silver', 'bronze'];
+    document.getElementById('mvp-list').innerHTML = contenders.map((p, i) => `
+      <div class="mvp-row">
+        <div class="mvp-rank ${rankClass[i] || ''}">${p.rank}</div>
+        <div class="mvp-info">
+          <div class="mvp-name">${p.name}</div>
+          <div class="mvp-team">${p.team}</div>
+        </div>
+        <div class="mvp-stats">
+          <div class="mvp-stat">${p.ppg}<span>PPG</span></div>
+          <div class="mvp-stat">${p.rpg}<span>RPG</span></div>
+          <div class="mvp-stat">${p.apg}<span>APG</span></div>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    document.getElementById('mvp-list').innerHTML = '<p style="color:#f87171;font-size:13px">Unable to load MVP data.</p>';
+  }
+}
+
+// 1. Initialize an empty array to hold the data
+let players = [];
+
+// 2. Fetch data from your backend
+async function loadRosterFromDB() {
+  try {
+    // Using your specific IP address
+    const response = await fetch('/api/roster');
+    if (!response.ok) throw new Error('Network response was not ok');
+    
+    players = await response.json();
+    console.log("Data loaded:", players);
+    render(); // Draw the cards once data is ready
+  } catch (e) {
+    console.error("Database connection failed", e);
+    document.getElementById('grid').innerHTML = `<p style="color:red">Unable to connect to Roster API.</p>`;
+  }
+}
+
+// 3. The Render Function
+function render() {
+  // FIXED: Your ID in the HTML is 'grid', not 'roster-grid'
+  const container = document.getElementById('grid');
+  const searchTerm = document.getElementById('search').value.toLowerCase();
+  
+  container.innerHTML = ''; 
+
+  // Filter players based on search bar
+  const filteredPlayers = players.filter(p => 
+    p.name.toLowerCase().includes(searchTerm)
+  );
+
+  filteredPlayers.forEach(player => {
+    const card = document.createElement('div');
+    card.className = 'player-card';
+    
+    // Check for injury status
+    const injuryText = player.injury ? (() => {
+        const statusColor = player.injury === 'Out' ? '#f87171' : player.injury === 'Day-To-Day' ? '#fbbf24' : '#fb923c';
+        return `<div style="margin-top:8px;padding:7px 9px;background:rgba(248,113,113,0.08);border-left:3px solid ${statusColor};border-radius:0 5px 5px 0;">
+          <div style="font-size:10px;font-weight:700;color:${statusColor};text-transform:uppercase;letter-spacing:.5px;">${player.injury}</div>
+          ${player.injury_detail ? `<div style="font-size:11px;color:#aaa;margin-top:3px;line-height:1.4;">${player.injury_detail}</div>` : ''}
+        </div>`;
+      })() : '';
+
+    // FIXED: Using the CSS classes defined in your <style> block (pc-num, pc-name, pc-stats)
+    card.innerHTML = `
+      <div class="pc-num">#${player.num}</div>
+      <div class="pc-name">${player.name}</div>
+      <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px;">${player.pos}</div>
+      
+      <div class="pc-stats">
+        <div><span class="stat-lbl">PPG</span>${player.ppg || '0.0'}</div>
+        <div><span class="stat-lbl">RPG</span>${player.rpg || '0.0'}</div>
+        <div><span class="stat-lbl">APG</span>${player.apg || '0.0'}</div>
+      </div>
+      ${injuryText}
+    `;
+    container.appendChild(card);
+  });
+}
+
+// Initial Load
+loadSchedule();
+loadRosterFromDB();
+loadMvp();
+</script>
+</body>
+</html>
