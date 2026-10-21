@@ -3,56 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Celtics Hub — 2026 Season Tracker</title>
+  <title>NBA Hub — Roster &amp; Stats</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --green: #007A33; --green-light: #4ade80; --bg: #0a0c0a; --surface: #0f120f;
+      --accent: #c8102e; --accent-light: #ff6b6b; --bg: #0a0c0a; --surface: #0f120f;
       --card: #141914; --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #636860;
     }
+    * { box-sizing: border-box; }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-    .wrap { max-width: 920px; margin: 0 auto; }
-    
-    /* NEW: Schedule/Playoff Header */
-    .season-tracker { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+    .wrap { max-width: 960px; margin: 0 auto; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; gap: 16px; flex-wrap: wrap; }
+    .brand { font-family: 'Bebas Neue', sans-serif; font-size: 44px; line-height: 1; letter-spacing: 1px; }
+    .brand span { color: var(--accent); }
+    .year-toggle { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 4px; }
+    .yt { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: .5px; background: none; border: none; color: var(--muted); padding: 6px 18px; border-radius: 99px; cursor: pointer; transition: .2s; }
+    .yt.active { background: var(--accent); color: #fff; }
+
+    .section-label { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 1.5px; margin: 8px 0 16px; }
+
+    /* Team grid */
+    .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+    .team-tile { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 10px 12px; text-align: center; cursor: pointer; transition: .2s; }
+    .team-tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .team-tile img { width: 56px; height: 56px; object-fit: contain; }
+    .tt-name { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.2; }
+
+    /* Team detail header */
+    .back-btn { background: none; border: none; color: var(--muted); font-family: 'DM Sans'; font-size: 14px; cursor: pointer; padding: 0; margin-bottom: 14px; }
+    .back-btn:hover { color: var(--text); }
+    .team-header { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; }
+    .team-logo { width: 84px; height: 84px; object-fit: contain; }
+    .team-name { font-family: 'Bebas Neue', sans-serif; font-size: 48px; line-height: .9; margin: 0; }
+    .team-season { font-family: 'Bebas Neue'; font-size: 22px; color: var(--accent); }
+
+    .season-tracker { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 26px; }
     .tracker-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; }
     .tracker-title { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; margin-bottom: 10px; }
-    
     .last-games { display: flex; gap: 10px; }
-    .game-chip { background: var(--card); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; flex: 1; text-align: center; }
-    .win { color: var(--green-light); font-weight: bold; }
-    .loss { color: #f87171; font-weight: bold; }
-    
+    .game-chip { background: var(--card); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; flex: 1; text-align: center; font-size: 13px; }
+    .win { color: #4ade80; font-weight: bold; } .loss { color: #f87171; font-weight: bold; }
     .playoff-countdown { display: flex; align-items: center; justify-content: space-around; height: 60px; }
     .count-item { text-align: center; }
     .count-val { font-family: 'Bebas Neue'; font-size: 32px; line-height: 1; display: block; }
     .count-lbl { font-size: 9px; color: var(--muted); }
 
-    /* Previous Roster Styles */
-    .header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; }
-    .header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 50px; line-height: 0.9; margin: 0; }
-    .header h1 span { color: var(--green); }
-    .controls { display: flex; gap: 10px; margin-bottom: 20px; }
+    .controls { display: flex; gap: 10px; margin-bottom: 18px; }
     .search-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 10px 20px; color: #fff; flex-grow: 1; outline: none; }
     .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-    .player-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 15px; transition: 0.2s; cursor: pointer; }
-    .player-card:hover { border-color: var(--green); }
-    .pc-num { font-family: 'Bebas Neue'; font-size: 30px; color: var(--green); }
+    .player-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 15px; transition: 0.2s; }
+    .player-card:hover { border-color: var(--accent); }
+    .pc-num { font-family: 'Bebas Neue'; font-size: 30px; color: var(--accent); }
     .pc-name { font-weight: 600; margin: 5px 0; }
     .pc-stats { display: flex; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; font-family: 'DM Mono'; font-size: 13px; gap: 15px; }
     .stat-lbl { font-size: 9px; color: var(--muted); display: block; }
 
-    /* MVP Contenders */
     .mvp-section { margin-top: 40px; }
     .mvp-title { font-family: 'Bebas Neue'; font-size: 28px; letter-spacing: 1px; margin-bottom: 4px; }
     .mvp-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
     .mvp-list { display: flex; flex-direction: column; gap: 8px; }
-    .mvp-row { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; transition: border-color .2s; }
-    .mvp-row:hover { border-color: var(--green); }
+    .mvp-row { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
     .mvp-rank { font-family: 'Bebas Neue'; font-size: 26px; color: var(--muted); width: 28px; text-align: center; flex-shrink: 0; }
-    .mvp-rank.gold   { color: #f5c518; }
-    .mvp-rank.silver { color: #adb5bd; }
-    .mvp-rank.bronze { color: #cd7f32; }
+    .mvp-rank.gold { color: #f5c518; } .mvp-rank.silver { color: #adb5bd; } .mvp-rank.bronze { color: #cd7f32; }
     .mvp-info { flex: 1; min-width: 0; }
     .mvp-name { font-weight: 600; font-size: 15px; }
     .mvp-team { font-size: 11px; color: var(--muted); margin-top: 1px; }
@@ -62,189 +75,179 @@
   </style>
 </head>
 <body>
-
 <div class="wrap">
-  <div class="season-tracker">
-    <div class="tracker-box">
-      <div class="tracker-title">Last 3 Games</div>
-      <div class="last-games" id="last-games">
-        <div class="game-chip" style="color:var(--muted)">—</div>
-        <div class="game-chip" style="color:var(--muted)">—</div>
-        <div class="game-chip" style="color:var(--muted)">—</div>
+  <div class="topbar">
+    <div class="brand">NBA <span>HUB</span></div>
+    <div class="year-toggle" id="yearToggle"></div>
+  </div>
+
+  <!-- Home: team logo grid -->
+  <div id="homeView">
+    <div class="section-label">Select a team</div>
+    <div class="team-grid" id="teamGrid"></div>
+  </div>
+
+  <!-- Team detail -->
+  <div id="teamView" style="display:none">
+    <button class="back-btn" onclick="showHome()">&larr; All teams</button>
+    <div class="team-header">
+      <img class="team-logo" id="teamLogo" src="" alt="">
+      <div>
+        <h1 class="team-name" id="teamName">&nbsp;</h1>
+        <div class="team-season" id="teamSeasonLabel"></div>
       </div>
     </div>
-    <div class="tracker-box">
-      <div class="tracker-title">Road to Playoffs</div>
-      <div class="playoff-countdown">
-        <div class="count-item"><span class="count-val" id="sched-played">—</span><span class="count-lbl">PLAYED</span></div>
-        <div class="count-item" style="color: var(--green-light);"><span class="count-val" id="sched-remaining">—</span><span class="count-lbl">REMAINING</span></div>
-        <div class="count-item"><span class="count-val" id="sched-playoff">—</span><span class="count-lbl">START DATE</span></div>
+
+    <div class="season-tracker">
+      <div class="tracker-box">
+        <div class="tracker-title">Last 3 Games</div>
+        <div class="last-games" id="last-games"></div>
+      </div>
+      <div class="tracker-box">
+        <div class="tracker-title">Road to Playoffs</div>
+        <div class="playoff-countdown">
+          <div class="count-item"><span class="count-val" id="sched-played">—</span><span class="count-lbl">PLAYED</span></div>
+          <div class="count-item" style="color:#4ade80;"><span class="count-val" id="sched-remaining">—</span><span class="count-lbl">REMAINING</span></div>
+          <div class="count-item"><span class="count-val" id="sched-playoff">—</span><span class="count-lbl">START DATE</span></div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="header">
-    <h1>Boston<br><span>Celtics</span></h1>
-    <select id="seasonSelect" onchange="loadSeason(this.value)"
-            style="font-family:'Bebas Neue',sans-serif; font-size:28px; background:#111; color:var(--green); border:1px solid #333; border-radius:6px; padding:4px 10px; cursor:pointer;">
-    </select>
-  </div>
+    <div class="controls">
+      <input type="text" id="search" class="search-bar" placeholder="Search roster..." oninput="renderRoster()">
+    </div>
+    <div class="roster-grid" id="grid"></div>
 
-  <div class="controls">
-    <input type="text" id="search" class="search-bar" placeholder="Search roster..." oninput="render()">
-  </div>
-
-  <div class="roster-grid" id="grid"></div>
-  <div class="mvp-section">
-    <div class="mvp-title">🏆 MVP Contenders</div>
-    <div class="mvp-sub">Source: Kia MVP Ladder (NBA.com) — updates weekly</div>
-    <div class="mvp-list" id="mvp-list">
-      <p style="color:var(--muted);font-size:13px">Loading...</p>
+    <div class="mvp-section">
+      <div class="mvp-title">🏆 MVP Contenders</div>
+      <div class="mvp-sub">Source: Kia MVP Ladder (NBA.com) — league-wide, updates weekly</div>
+      <div class="mvp-list" id="mvp-list"></div>
     </div>
   </div>
-
 </div>
 
 <script>
-// The API is served from the same origin (IIS). Empty base = relative paths.
 const API = '';
-let currentSeason = null;
+let seasons = [], currentSeason = null, currentTeam = null, players = [];
+const teamCache = {};   // season -> { abbr: {abbr,name,logo} }
+const labelFor = (y) => (y - 1) + '-' + String(y).slice(-2);
+const jget = async (u) => { const r = await fetch(API + u); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); };
 
-// Build the year dropdown from /api/seasons, select the current season, then load everything.
-async function initSeasons() {
+async function boot() {
   try {
-    const res = await fetch(API + '/api/seasons');
-    if (!res.ok) throw new Error('seasons fetch failed');
-    const data = await res.json();
-    const sel = document.getElementById('seasonSelect');
-    sel.innerHTML = (data.seasons || []).map(s => `<option value="${s.season}">${s.label}</option>`).join('');
-    currentSeason = data.current;
-    if (currentSeason) sel.value = String(currentSeason);
-  } catch (e) {
-    console.error('seasons load failed', e);
-  }
-  loadSeason(currentSeason);
+    const s = await jget('/api/seasons');
+    seasons = s.seasons || [];
+    currentSeason = s.current;
+  } catch (e) { console.error('seasons failed', e); }
+  renderYearToggle();
+  loadTeamGrid(currentSeason);
 }
 
-function loadSeason(season) {
-  currentSeason = season;
-  loadSchedule(season);
-  loadRosterFromDB(season);
-  loadMvp(season);
+function renderYearToggle() {
+  document.getElementById('yearToggle').innerHTML = seasons.map(s =>
+    `<button class="yt ${s.season === currentSeason ? 'active' : ''}" onclick="selectYear(${s.season})">${s.label}</button>`).join('');
 }
 
-const seasonQ = (s) => (s ? '?season=' + encodeURIComponent(s) : '');
+function selectYear(y) {
+  currentSeason = y;
+  renderYearToggle();
+  loadTeamGrid(y);
+  if (currentTeam) openTeam(currentTeam);   // keep the same team when the year changes
+}
 
-async function loadSchedule(season) {
+async function loadTeamGrid(season) {
+  let teams = [];
+  try { teams = await jget('/api/teams?season=' + season); } catch (e) { console.error('teams failed', e); }
+  teamCache[season] = {}; teams.forEach(t => teamCache[season][t.abbr] = t);
+  document.getElementById('teamGrid').innerHTML = teams.map(t => `
+    <div class="team-tile" onclick="openTeam('${t.abbr}')">
+      <img src="${t.logo}" alt="${t.abbr}" onerror="this.style.visibility='hidden'">
+      <div class="tt-name">${t.name}</div>
+    </div>`).join('') || '<div class="section-label">No teams for this season yet.</div>';
+}
+
+function showHome() {
+  currentTeam = null;
+  document.getElementById('teamView').style.display = 'none';
+  document.getElementById('homeView').style.display = 'block';
+}
+
+async function openTeam(abbr) {
+  currentTeam = abbr;
+  document.getElementById('homeView').style.display = 'none';
+  document.getElementById('teamView').style.display = 'block';
+  if (!teamCache[currentSeason]) await loadTeamGrid(currentSeason);
+  const t = (teamCache[currentSeason] || {})[abbr] || { name: abbr, logo: '' };
+  document.getElementById('teamLogo').src = t.logo || '';
+  document.getElementById('teamName').textContent = t.name;
+  document.getElementById('teamSeasonLabel').textContent = labelFor(currentSeason);
+  const qs = '?season=' + currentSeason + '&team=' + abbr;
+  loadSchedule(qs); loadRoster(qs); loadMvp('?season=' + currentSeason);
+}
+
+async function loadSchedule(qs) {
   try {
-    const res  = await fetch(API + '/api/schedule' + seasonQ(season));
-    if (!res.ok) throw new Error('Schedule fetch failed');
-    const data = await res.json();
-
-    document.getElementById('sched-played').textContent    = data.played;
+    const data = await jget('/api/schedule' + qs);
+    document.getElementById('sched-played').textContent = data.played;
     document.getElementById('sched-remaining').textContent = data.remaining;
-    document.getElementById('sched-playoff').textContent   = data.playoffStart;
-
-    const resultClass = { W: 'win', L: 'loss' };
-    document.getElementById('last-games').innerHTML = data.lastGames.map(g => `
-      <div class="game-chip">
-        <span class="${resultClass[g.result]}">${g.result}</span> ${g.score}<br>
-        <small>${g.isHome ? 'vs' : '@'} ${g.opp}</small>
-      </div>`).join('');
+    document.getElementById('sched-playoff').textContent = data.playoffStart;
+    const rc = { W: 'win', L: 'loss' };
+    document.getElementById('last-games').innerHTML = (data.lastGames || []).length
+      ? data.lastGames.map(g => `<div class="game-chip"><span class="${rc[g.result]}">${g.result}</span> ${g.score}<br><small>${g.isHome ? 'vs' : '@'} ${g.opp}</small></div>`).join('')
+      : '<div class="game-chip" style="color:var(--muted)">—</div>';
   } catch (e) {
-    console.error('Schedule load failed', e);
-    document.getElementById('last-games').innerHTML =
-      '<div style="color:var(--muted);font-size:12px">Unavailable</div>';
+    document.getElementById('last-games').innerHTML = '<div class="game-chip" style="color:var(--muted)">Unavailable</div>';
+    ['sched-played','sched-remaining','sched-playoff'].forEach(i => document.getElementById(i).textContent = '—');
   }
 }
 
-async function loadMvp(season) {
+async function loadRoster(qs) {
+  try { players = await jget('/api/roster' + qs); }
+  catch (e) { document.getElementById('grid').innerHTML = '<p style="color:var(--accent-light)">Unable to load roster.</p>'; return; }
+  renderRoster();
+}
+
+function renderRoster() {
+  const term = document.getElementById('search').value.toLowerCase();
+  document.getElementById('grid').innerHTML = players
+    .filter(p => p.name.toLowerCase().includes(term))
+    .map(p => {
+      const inj = p.injury ? (() => {
+        const c = p.injury === 'Out' ? '#f87171' : p.injury === 'Day-To-Day' ? '#fbbf24' : '#fb923c';
+        return `<div style="margin-top:8px;padding:7px 9px;background:rgba(248,113,113,0.08);border-left:3px solid ${c};border-radius:0 5px 5px 0;">
+          <div style="font-size:10px;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:.5px;">${p.injury}</div>
+          ${p.injury_detail ? `<div style="font-size:11px;color:#aaa;margin-top:3px;line-height:1.4;">${p.injury_detail}</div>` : ''}</div>`;
+      })() : '';
+      return `<div class="player-card">
+        <div class="pc-num">${p.num ? ('#' + p.num) : ''}</div>
+        <div class="pc-name">${p.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">${p.pos} &middot; ${p.gp || '0'} GP</div>
+        <div class="pc-stats">
+          <div><span class="stat-lbl">PPG</span>${p.ppg || '0.0'}</div>
+          <div><span class="stat-lbl">RPG</span>${p.rpg || '0.0'}</div>
+          <div><span class="stat-lbl">APG</span>${p.apg || '0.0'}</div>
+        </div>${inj}</div>`;
+    }).join('') || '<p style="color:var(--muted)">No players.</p>';
+}
+
+async function loadMvp(qs) {
   try {
-    const res = await fetch(API + '/api/mvp' + seasonQ(season));
-    if (!res.ok) throw new Error('MVP fetch failed');
-    const contenders = await res.json();
-    const rankClass = ['gold', 'silver', 'bronze'];
-    document.getElementById('mvp-list').innerHTML = contenders.map((p, i) => `
+    const c = await jget('/api/mvp' + qs);
+    const rank = ['gold', 'silver', 'bronze'];
+    document.getElementById('mvp-list').innerHTML = c.map((p, i) => `
       <div class="mvp-row">
-        <div class="mvp-rank ${rankClass[i] || ''}">${p.rank}</div>
-        <div class="mvp-info">
-          <div class="mvp-name">${p.name}</div>
-          <div class="mvp-team">${p.team}</div>
-        </div>
+        <div class="mvp-rank ${rank[i] || ''}">${p.rank}</div>
+        <div class="mvp-info"><div class="mvp-name">${p.name}</div><div class="mvp-team">${p.team}</div></div>
         <div class="mvp-stats">
           <div class="mvp-stat">${p.ppg}<span>PPG</span></div>
           <div class="mvp-stat">${p.rpg}<span>RPG</span></div>
           <div class="mvp-stat">${p.apg}<span>APG</span></div>
         </div>
       </div>`).join('');
-  } catch (e) {
-    document.getElementById('mvp-list').innerHTML = '<p style="color:#f87171;font-size:13px">Unable to load MVP data.</p>';
-  }
+  } catch (e) { document.getElementById('mvp-list').innerHTML = '<p style="color:var(--accent-light);font-size:13px">Unable to load MVP data.</p>'; }
 }
 
-// 1. Initialize an empty array to hold the data
-let players = [];
-
-// 2. Fetch data from your backend
-async function loadRosterFromDB(season) {
-  try {
-    const response = await fetch(API + '/api/roster' + seasonQ(season));
-    if (!response.ok) throw new Error('Network response was not ok');
-    
-    players = await response.json();
-    console.log("Data loaded:", players);
-    render(); // Draw the cards once data is ready
-  } catch (e) {
-    console.error("Database connection failed", e);
-    document.getElementById('grid').innerHTML = `<p style="color:red">Unable to connect to Roster API.</p>`;
-  }
-}
-
-// 3. The Render Function
-function render() {
-  // FIXED: Your ID in the HTML is 'grid', not 'roster-grid'
-  const container = document.getElementById('grid');
-  const searchTerm = document.getElementById('search').value.toLowerCase();
-  
-  container.innerHTML = ''; 
-
-  // Filter players based on search bar
-  const filteredPlayers = players.filter(p => 
-    p.name.toLowerCase().includes(searchTerm)
-  );
-
-  filteredPlayers.forEach(player => {
-    const card = document.createElement('div');
-    card.className = 'player-card';
-    
-    // Check for injury status
-    const injuryText = player.injury ? (() => {
-        const statusColor = player.injury === 'Out' ? '#f87171' : player.injury === 'Day-To-Day' ? '#fbbf24' : '#fb923c';
-        return `<div style="margin-top:8px;padding:7px 9px;background:rgba(248,113,113,0.08);border-left:3px solid ${statusColor};border-radius:0 5px 5px 0;">
-          <div style="font-size:10px;font-weight:700;color:${statusColor};text-transform:uppercase;letter-spacing:.5px;">${player.injury}</div>
-          ${player.injury_detail ? `<div style="font-size:11px;color:#aaa;margin-top:3px;line-height:1.4;">${player.injury_detail}</div>` : ''}
-        </div>`;
-      })() : '';
-
-    // FIXED: Using the CSS classes defined in your <style> block (pc-num, pc-name, pc-stats)
-    card.innerHTML = `
-      <div class="pc-num">${player.num ? ('#' + player.num) : ''}</div>
-      <div class="pc-name">${player.name}</div>
-      <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px;">${player.pos} &middot; ${player.gp || '0'} GP</div>
-      
-      <div class="pc-stats">
-        <div><span class="stat-lbl">PPG</span>${player.ppg || '0.0'}</div>
-        <div><span class="stat-lbl">RPG</span>${player.rpg || '0.0'}</div>
-        <div><span class="stat-lbl">APG</span>${player.apg || '0.0'}</div>
-      </div>
-      ${injuryText}
-    `;
-    container.appendChild(card);
-  });
-}
-
-// Initial load: build the season dropdown, then load the current season
-initSeasons();
+boot();
 </script>
 </body>
 </html>

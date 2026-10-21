@@ -1,4 +1,4 @@
-# Celtics Hub
+# NBA Hub (formerly Celtics Hub)
 
 A small Boston Celtics tracker. It shows the roster with live per-game stats and injuries, the Kia MVP ladder, and the season schedule with recent results. The data comes from [nbaapi.com](https://api.server.nbaapi.com) and ESPN's public site API, refreshed hourly.
 

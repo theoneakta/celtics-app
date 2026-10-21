@@ -59,14 +59,36 @@ namespace Celtics
             if (int.TryParse(raw, out season)) return season.ToString();
             return "(SELECT MAX(season) FROM dbo." + table + ")";
         }
+
+        // Optional team filter from ?team= (abbreviation, letters only). Empty string = no filter.
+        protected static string TeamClause()
+        {
+            string t = HttpContext.Current.Request.QueryString["team"];
+            if (string.IsNullOrEmpty(t)) return "";
+            string safe = System.Text.RegularExpressions.Regex.Replace(t, "[^A-Za-z]", "").ToUpper();
+            return safe.Length == 0 ? "" : " AND team = '" + safe + "'";
+        }
     }
 
     public class RosterHandler : JsonHandler
     {
         protected override object Build()
         {
-            return Query("SELECT id, season, num, name, pos, ppg, rpg, apg, spg, bpg, fgp, tpp, ftp, gp, mpg, injury, injury_detail, espn_id " +
-                         "FROM dbo.players WHERE season = " + SeasonFilter("players") + " ORDER BY CAST(num AS INT)");
+            // Order by games played then name: jersey numbers are blank for past seasons, so CAST(num) is unsafe.
+            return Query("SELECT id, season, team, num, name, pos, ppg, rpg, apg, spg, bpg, fgp, tpp, ftp, gp, mpg, injury, injury_detail, espn_id " +
+                         "FROM dbo.players WHERE season = " + SeasonFilter("players") + TeamClause() +
+                         " ORDER BY CAST(gp AS INT) DESC, name");
+        }
+    }
+
+    // Teams that have a roster in the given season, with name + logo, for the team grid.
+    public class TeamsHandler : JsonHandler
+    {
+        protected override object Build()
+        {
+            string season = SeasonFilter("players");
+            return Query("SELECT t.abbr, t.name, t.logo FROM dbo.teams t " +
+                         "WHERE t.abbr IN (SELECT DISTINCT team FROM dbo.players WHERE season = " + season + ") ORDER BY t.name");
         }
     }
 
@@ -106,7 +128,7 @@ namespace Celtics
     {
         protected override object Build()
         {
-            List<Dictionary<string, object>> rows = Query("SELECT played, remaining, playoff_start, last_games, updated_at FROM dbo.schedule_info WHERE season = " + SeasonFilter("schedule_info"));
+            List<Dictionary<string, object>> rows = Query("SELECT played, remaining, playoff_start, last_games, updated_at FROM dbo.schedule_info WHERE season = " + SeasonFilter("schedule_info") + TeamClause());
             Dictionary<string, object> o = new Dictionary<string, object>();
             if (rows.Count == 0) throw new Exception("schedule not synced yet");
             Dictionary<string, object> s = rows[0];
