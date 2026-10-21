@@ -146,8 +146,9 @@ async function syncSeason(season) {
 
   try {
     const sc = await fetchSchedule(season);
+    // schedule_info.id is a plain (non-identity) PK; one row per season, so use the season as the id.
     await q(`UPDATE dbo.schedule_info SET played=@played, remaining=@remaining, playoff_start=@ps, last_games=@lg, updated_at=GETDATE() WHERE season=@season;
-             IF @@ROWCOUNT = 0 INSERT dbo.schedule_info(season, played, remaining, playoff_start, last_games, updated_at) VALUES(@season, @played, @remaining, @ps, @lg, GETDATE());`,
+             IF @@ROWCOUNT = 0 INSERT dbo.schedule_info(id, season, played, remaining, playoff_start, last_games, updated_at) VALUES(@season, @season, @played, @remaining, @ps, @lg, GETDATE());`,
       { season, played: sc.played, remaining: sc.remaining, ps: sc.playoffStart, lg: JSON.stringify(sc.lastGames) });
     console.log(`  schedule: ${sc.played} played, ${sc.remaining} remaining, playoffs ${sc.playoffStart}`);
   } catch (err) { console.error('  schedule fetch failed:', err.message); }

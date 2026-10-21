@@ -230,7 +230,7 @@ function render() {
     card.innerHTML = `
       <div class="pc-num">#${player.num}</div>
       <div class="pc-name">${player.name}</div>
-      <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px;">${player.pos}</div>
+      <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px;">${player.pos} &middot; ${player.gp || '0'} GP</div>
       
       <div class="pc-stats">
         <div><span class="stat-lbl">PPG</span>${player.ppg || '0.0'}</div>

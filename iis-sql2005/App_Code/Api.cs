@@ -50,7 +50,6 @@ namespace Celtics
             }
             return rows;
         }
-    }
 
         // The season filter is an integer parsed from ?season=; falls back to the newest season in that table.
         protected static string SeasonFilter(string table)
