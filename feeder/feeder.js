@@ -130,24 +130,47 @@ const perGame = (p) => { const gp = parseInt(p.games || 1, 10) || 1; return {
   pts: parseFloat(p.points || 0) / gp, reb: parseFloat(p.totalRb || 0) / gp, ast: parseFloat(p.assists || 0) / gp,
   stl: parseFloat(p.steals || 0) / gp, blk: parseFloat(p.blocks || 0) / gp }; };
 
-// Per-season awards from the stats: the MVP race (top 5 by per-game impact) and the league leader in each category.
-// Falls back to a static MVP list only when a season has no stats yet (opening week).
-function seasonAwards(season, league) {
-  const maxG = league.reduce((m, p) => Math.max(m, parseInt(p.games || 0, 10)), 0);
-  const minG = Math.max(10, Math.floor(maxG * 0.5));   // scales: ~41 for a finished 82-game season, ~0 early on
-  const q = league.map(perGame).filter(p => p.gp >= minG);
-  if (!q.length) {
-    const contenders = mvpFallback.map((n, i) => ({ rank: i + 1, name: n, team: '—', ppg: '—', rpg: '—', apg: '—' }));
-    return { contenders, leaders: [] };
+// Advanced stats league-wide (win shares, offensive/defensive WS, VORP, PER), deduped by name (most games).
+async function fetchAdvanced(season) {
+  let all = [];
+  try {
+    for (let page = 1; page <= 4; page++) {
+      const res = await axios.get('https://api.server.nbaapi.com/api/playeradvancedstats', { params: { season, isPlayoff: false, pageSize: 500, page }, timeout: 20000 });
+      const data = res.data?.data || []; all = all.concat(data);
+      if (data.length < 500) break;
+    }
+  } catch (err) { console.error('  advanced fetch failed:', err.message); }
+  const m = new Map();
+  for (const p of all) { const k = normalize(p.playerName), e = m.get(k); if (!e || parseInt(p.games || 0, 10) > parseInt(e.games || 0, 10)) m.set(k, p); }
+  return [...m.values()];
+}
+
+// Per-season awards. Voted NBA awards aren't in the data source, so these are derived from the stats:
+//   MVP / Offensive POY / Defensive POY from win shares (overall / offensive / defensive),
+//   plus the statistical leader in each box-score category. Falls back to a static MVP list with no stats yet.
+function seasonAwards(season, totals, advanced) {
+  const totMap = {}; for (const p of totals) totMap[normalize(p.playerName)] = perGame(p);
+  const maxG = advanced.reduce((m, p) => Math.max(m, parseInt(p.games || 0, 10)), 0);
+  const minG = Math.max(10, Math.floor(maxG * 0.5));
+  const adv = advanced.map(p => ({ name: p.playerName, team: p.team, gp: parseInt(p.games || 0, 10),
+    ws: parseFloat(p.winShares || 0), ows: parseFloat(p.offensiveWS || 0), dws: parseFloat(p.defensiveWS || 0) })).filter(p => p.gp >= minG);
+  const q = totals.map(perGame).filter(p => p.gp >= minG);
+  if (!adv.length || !q.length) {
+    return { contenders: mvpFallback.map((n, i) => ({ rank: i + 1, name: n, team: '—', ppg: '—', rpg: '—', apg: '—' })), leaders: [] };
   }
-  const scored = q.map(p => ({ ...p, score: p.pts + p.reb + p.ast + p.stl + p.blk })).sort((a, b) => b.score - a.score);
-  const contenders = scored.slice(0, 5).map((p, i) => ({ rank: i + 1, name: p.name, team: p.team, ppg: p.pts.toFixed(1), rpg: p.reb.toFixed(1), apg: p.ast.toFixed(1) }));
-  const top = (key) => q.slice().sort((a, b) => b[key] - a[key])[0];
-  const cat = (label, key, unit) => { const p = top(key); return { category: label, name: p.name, team: p.team, value: p[key].toFixed(1) + ' ' + unit }; };
+  const byWs = adv.slice().sort((a, b) => b.ws - a.ws);
+  const contenders = byWs.slice(0, 5).map((p, i) => { const t = totMap[normalize(p.name)];
+    return { rank: i + 1, name: p.name, team: p.team, ppg: t ? t.pts.toFixed(1) : '—', rpg: t ? t.reb.toFixed(1) : '—', apg: t ? t.ast.toFixed(1) : '—' }; });
+  const topAdv = (key) => adv.slice().sort((a, b) => b[key] - a[key])[0];
+  const topPg = (key) => q.slice().sort((a, b) => b[key] - a[key])[0];
+  const advAward = (label, key, unit) => { const p = topAdv(key); return { category: label, name: p.name, team: p.team, value: p[key].toFixed(1) + ' ' + unit }; };
+  const pgAward = (label, key, unit) => { const p = topPg(key); return { category: label, name: p.name, team: p.team, value: p[key].toFixed(1) + ' ' + unit }; };
   const leaders = [
-    { category: 'MVP', name: scored[0].name, team: scored[0].team, value: scored[0].pts.toFixed(1) + ' PPG' },
-    cat('Points', 'pts', 'PPG'), cat('Rebounds', 'reb', 'RPG'), cat('Assists', 'ast', 'APG'),
-    cat('Steals', 'stl', 'SPG'), cat('Blocks', 'blk', 'BPG'),
+    advAward('MVP', 'ws', 'WS'),
+    advAward('Offensive POY', 'ows', 'OWS'),
+    advAward('Defensive POY', 'dws', 'DWS'),
+    pgAward('Points', 'pts', 'PPG'), pgAward('Rebounds', 'reb', 'RPG'), pgAward('Assists', 'ast', 'APG'),
+    pgAward('Steals', 'stl', 'SPG'), pgAward('Blocks', 'blk', 'BPG'),
   ];
   return { contenders, leaders };
 }
@@ -192,7 +215,7 @@ async function sync() {
   for (const season of SEASONS) {
     let players = 0, done = 0;
     for (const t of teams) { players += await syncTeamSeason(t, season); done++; await sleep(120); }
-    const { contenders, leaders } = seasonAwards(season, await fetchLeague(season));
+    const { contenders, leaders } = seasonAwards(season, await fetchLeague(season), await fetchAdvanced(season));
     await q('DELETE FROM dbo.mvp_contenders WHERE season = @season', { season });
     for (const m of contenders) await q('INSERT dbo.mvp_contenders(season, [rank], name, team, ppg, rpg, apg) VALUES(@season, @rank, @name, @team, @ppg, @rpg, @apg)', { season, ...m });
     await q('DELETE FROM dbo.leaders WHERE season = @season', { season });
