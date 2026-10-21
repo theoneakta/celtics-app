@@ -61,15 +61,34 @@ async function fetchRoster() {
   }).filter(p => p.name);
 }
 
-async function fetchNbaApiStats(season) {
-  const map = {};
+// Raw BOS regular-season totals from nbaapi, deduped by player (keep the row with the most games -
+// drops any stray playoff/partial rows). Used for stats (current season) and as the roster (past seasons).
+async function fetchBosTotals(season) {
   try {
     const res = await axios.get('https://api.server.nbaapi.com/api/playertotals',
-      { params: { team: 'BOS', season, isPlayoff: false, pageSize: 50 }, timeout: 15000, headers: { Accept: 'application/json' } });
-    for (const p of res.data?.data || []) map[normalize(p.playerName)] = extractStats(p);
-    console.log(`  nbaapi.com: ${Object.keys(map).length} player stat lines for season ${season}`);
-  } catch (err) { console.error('  nbaapi.com fetch failed:', err.message); }
-  return map;
+      { params: { team: 'BOS', season, isPlayoff: false, pageSize: 100 }, timeout: 15000, headers: { Accept: 'application/json' } });
+    const m = new Map();
+    for (const p of res.data?.data || []) {
+      const k = normalize(p.playerName), e = m.get(k);
+      if (!e || parseInt(p.games || 0, 10) > parseInt(e.games || 0, 10)) m.set(k, p);
+    }
+    return [...m.values()];
+  } catch (err) { console.error('  nbaapi.com fetch failed:', err.message); return []; }
+}
+
+// The player list for a season. Current season: live roster from ESPN + nbaapi stats.
+// A completed (past) season: everyone who played for BOS that year, from nbaapi (real stats + games).
+async function getSeasonPlayers(season) {
+  if (season === currentSeasonEndYear()) {
+    const roster = await fetchRoster();
+    const statsMap = {};
+    for (const p of await fetchBosTotals(season)) statsMap[normalize(p.playerName)] = extractStats(p);
+    console.log(`  source: ESPN current roster (${roster.length}) + nbaapi stats (${Object.keys(statsMap).length})`);
+    return roster.map(r => ({ ...r, stats: statsMap[normalize(r.name)] || ZERO }));
+  }
+  const rows = await fetchBosTotals(season);
+  console.log(`  source: nbaapi completed season (${rows.length} players)`);
+  return rows.map(p => ({ num: '', name: p.playerName, pos: p.position || '', espnId: '', injury: null, injuryDetail: null, stats: extractStats(p) }));
 }
 
 async function fetchMvpContenders(season) {
@@ -120,13 +139,12 @@ async function syncSeason(season) {
   await q('UPDATE dbo.players SET updated_at = NULL WHERE season = @season', { season });
 
   let roster = [];
-  try { roster = await fetchRoster(); console.log(`  ESPN roster: ${roster.length} players`); }
+  try { roster = await getSeasonPlayers(season); }
   catch (err) { console.error('  roster fetch failed, keeping existing rows:', err.message); return; }
   if (!roster.length) { console.error('  empty roster, skipping to avoid wiping the season'); return; }
 
-  const statsMap = await fetchNbaApiStats(season);
   for (const p of roster) {
-    const s = statsMap[normalize(p.name)] || ZERO;   // 0.0 early in a season before games are played
+    const s = p.stats || ZERO;   // 0.0 early in a season before games are played
     await q(`UPDATE dbo.players SET num=@num, pos=@pos, espn_id=@espn, ppg=@ppg, rpg=@rpg, apg=@apg, spg=@spg, bpg=@bpg,
              fgp=@fgp, tpp=@tpp, ftp=@ftp, gp=@gp, mpg=@mpg, injury=@injury, injury_detail=@detail, updated_at=GETDATE()
              WHERE season=@season AND name=@name;
