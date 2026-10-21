@@ -75,7 +75,7 @@ namespace Celtics
         protected override object Build()
         {
             // Order by games played then name: jersey numbers are blank for past seasons, so CAST(num) is unsafe.
-            return Query("SELECT id, season, team, num, name, pos, ppg, rpg, apg, spg, bpg, fgp, tpp, ftp, gp, mpg, injury, injury_detail, espn_id " +
+            return Query("SELECT id, season, team, num, name, pos, ppg, rpg, apg, spg, bpg, fgp, tpp, ftp, gp, mpg, injury, injury_detail, espn_id, photo " +
                          "FROM dbo.players WHERE season = " + SeasonFilter("players") + TeamClause() +
                          " ORDER BY CAST(gp AS INT) DESC, name");
         }

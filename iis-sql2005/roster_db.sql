@@ -24,6 +24,7 @@ CREATE TABLE dbo.players (
     injury        NVARCHAR(100),
     injury_detail NVARCHAR(300),
     espn_id       VARCHAR(20),
+    photo         VARCHAR(200),
     updated_at    DATETIME,
     CONSTRAINT UQ_players_season_team_name UNIQUE (season, team, name)
 );

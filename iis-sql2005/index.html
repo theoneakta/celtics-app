@@ -54,8 +54,11 @@
     .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
     .player-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 15px; transition: 0.2s; }
     .player-card:hover { border-color: var(--accent); }
-    .pc-num { font-family: 'Bebas Neue'; font-size: 30px; color: var(--accent); }
-    .pc-name { font-weight: 600; margin: 5px 0; }
+    .pc-head { display: flex; align-items: center; gap: 12px; }
+    .pc-photo { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; object-position: center top; background: var(--surface); border: 1px solid var(--border); flex-shrink: 0; }
+    .pc-num { font-family: 'Bebas Neue'; font-size: 26px; color: var(--accent); line-height: 1; }
+    .pc-name { font-weight: 600; margin: 2px 0; }
+    .pc-pos { font-size: 11px; color: var(--muted); }
     .pc-stats { display: flex; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; font-family: 'DM Mono'; font-size: 13px; gap: 15px; }
     .stat-lbl { font-size: 9px; color: var(--muted); display: block; }
 
@@ -253,11 +256,17 @@ function renderRoster() {
           <div style="font-size:10px;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:.5px;">${p.injury}</div>
           ${p.injury_detail ? `<div style="font-size:11px;color:#aaa;margin-top:3px;line-height:1.4;">${p.injury_detail}</div>` : ''}</div>`;
       })() : '';
+      const photo = p.photo ? `<img class="pc-photo" src="${p.photo}" alt="" onerror="this.style.visibility='hidden'">` : '<div class="pc-photo"></div>';
       return `<div class="player-card">
-        <div class="pc-num">${p.num ? ('#' + p.num) : ''}</div>
-        <div class="pc-name">${p.name}</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">${p.pos} &middot; ${p.gp || '0'} GP</div>
-        <div class="pc-stats">
+        <div class="pc-head">
+          ${photo}
+          <div>
+            <div class="pc-num">${p.num ? ('#' + p.num) : ''}</div>
+            <div class="pc-name">${p.name}</div>
+            <div class="pc-pos">${p.pos} &middot; ${p.gp || '0'} GP</div>
+          </div>
+        </div>
+        <div class="pc-stats" style="margin-top:12px;">
           <div><span class="stat-lbl">PPG</span>${p.ppg || '0.0'}</div>
           <div><span class="stat-lbl">RPG</span>${p.rpg || '0.0'}</div>
           <div><span class="stat-lbl">APG</span>${p.apg || '0.0'}</div>

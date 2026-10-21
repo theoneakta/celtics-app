@@ -20,6 +20,8 @@ const db = new sql.ConnectionPool({
 });
 
 // ESPN abbreviation -> nbaapi (basketball-reference) abbreviation, where they differ.
+const ESPN_HEAD = 'https://a.espncdn.com/i/headshots/nba/players/full/';
+const BREF_HEAD = 'https://www.basketball-reference.com/req/202106291/images/headshots/';
 const NBAAPI_ABBR = { BKN: 'BRK', CHA: 'CHO', GS: 'GSW', NO: 'NOP', NY: 'NYK', PHX: 'PHO', SA: 'SAS', UTAH: 'UTA', WSH: 'WAS' };
 // Fallback MVP names if a season has no stats yet (e.g. opening week). Normally the contenders are
 // computed per season from nbaapi stats, so each year differs.
@@ -84,10 +86,10 @@ async function getSeasonPlayers(team, season) {
     const roster = await fetchRoster(team.id);
     const statsMap = {};
     for (const p of await fetchTotals(team.nbaapi, season)) statsMap[normalize(p.playerName)] = extractStats(p);
-    return roster.map(r => ({ ...r, stats: statsMap[normalize(r.name)] || ZERO }));
+    return roster.map(r => ({ ...r, photo: r.espnId ? ESPN_HEAD + r.espnId + '.png' : '', stats: statsMap[normalize(r.name)] || ZERO }));
   }
   return (await fetchTotals(team.nbaapi, season)).map(p => ({
-    num: '', name: p.playerName, pos: p.position || '', espnId: '', injury: null, injuryDetail: null, stats: extractStats(p) }));
+    num: '', name: p.playerName, pos: p.position || '', espnId: '', photo: p.playerId ? BREF_HEAD + p.playerId + '.jpg' : '', injury: null, injuryDetail: null, stats: extractStats(p) }));
 }
 
 async function fetchSchedule(teamId, season) {
@@ -189,12 +191,12 @@ async function syncTeamSeason(team, season) {
   try { roster = await getSeasonPlayers(team, season); } catch (err) { console.error(`  ${team.abbr} ${season} roster failed: ${err.message}`); return 0; }
   if (!roster.length) return 0;  // keep whatever is there rather than wiping
   for (const p of roster) {
-    await q(`UPDATE dbo.players SET num=@num, pos=@pos, espn_id=@espn, ppg=@ppg, rpg=@rpg, apg=@apg, spg=@spg, bpg=@bpg,
+    await q(`UPDATE dbo.players SET num=@num, pos=@pos, espn_id=@espn, photo=@photo, ppg=@ppg, rpg=@rpg, apg=@apg, spg=@spg, bpg=@bpg,
              fgp=@fgp, tpp=@tpp, ftp=@ftp, gp=@gp, mpg=@mpg, injury=@injury, injury_detail=@detail, updated_at=GETDATE()
              WHERE season=@season AND team=@team AND name=@name;
-             IF @@ROWCOUNT = 0 INSERT dbo.players(season, team, num, name, pos, ppg, rpg, apg, spg, bpg, fgp, tpp, ftp, gp, mpg, injury, injury_detail, espn_id, updated_at)
-             VALUES(@season, @team, @num, @name, @pos, @ppg, @rpg, @apg, @spg, @bpg, @fgp, @tpp, @ftp, @gp, @mpg, @injury, @detail, @espn, GETDATE());`,
-      { season, team: team.abbr, num: p.num, name: p.name, pos: p.pos, espn: p.espnId, injury: p.injury, detail: p.injuryDetail,
+             IF @@ROWCOUNT = 0 INSERT dbo.players(season, team, num, name, pos, ppg, rpg, apg, spg, bpg, fgp, tpp, ftp, gp, mpg, injury, injury_detail, espn_id, photo, updated_at)
+             VALUES(@season, @team, @num, @name, @pos, @ppg, @rpg, @apg, @spg, @bpg, @fgp, @tpp, @ftp, @gp, @mpg, @injury, @detail, @espn, @photo, GETDATE());`,
+      { season, team: team.abbr, num: p.num, name: p.name, pos: p.pos, espn: p.espnId, photo: p.photo || '', injury: p.injury, detail: p.injuryDetail,
         ppg: p.stats.ppg, rpg: p.stats.rpg, apg: p.stats.apg, spg: p.stats.spg, bpg: p.stats.bpg, fgp: p.stats.fgp, tpp: p.stats.tpp, ftp: p.stats.ftp, gp: p.stats.gp, mpg: p.stats.mpg });
   }
   await q('DELETE FROM dbo.players WHERE season=@season AND team=@team AND updated_at IS NULL', { season, team: team.abbr });
