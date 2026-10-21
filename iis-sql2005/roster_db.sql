@@ -28,6 +28,16 @@ CREATE TABLE dbo.players (
     CONSTRAINT UQ_players_season_team_name UNIQUE (season, team, name)
 );
 GO
+IF OBJECT_ID('dbo.leaders') IS NULL
+CREATE TABLE dbo.leaders (
+    season   INT,
+    ord      INT,
+    category VARCHAR(20),
+    name     NVARCHAR(100),
+    team     VARCHAR(10),
+    value    VARCHAR(30)
+);
+GO
 IF OBJECT_ID('dbo.teams') IS NULL
 CREATE TABLE dbo.teams (
     abbr        VARCHAR(5) PRIMARY KEY,
@@ -89,6 +99,7 @@ GRANT SELECT ON dbo.players TO celtics_web;
 GRANT SELECT ON dbo.mvp_contenders TO celtics_web;
 GRANT SELECT ON dbo.schedule_info TO celtics_web;
 GRANT SELECT ON dbo.teams TO celtics_web;
+GRANT SELECT ON dbo.leaders TO celtics_web;
 GO
 -- Feeder (the container in ../feeder): SQL login, data read/write only
 IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'celtics_feeder')
@@ -101,6 +112,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.players TO celtics_feeder;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.mvp_contenders TO celtics_feeder;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.schedule_info TO celtics_feeder;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.teams TO celtics_feeder;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.leaders TO celtics_feeder;
 GO
 SELECT 'players' AS t, COUNT(*) AS n FROM dbo.players UNION ALL SELECT 'logins', COUNT(*) FROM sys.server_principals WHERE name IN (N'IIS APPPOOL\Celtics', N'celtics_feeder');
 GO

@@ -81,6 +81,15 @@ namespace Celtics
         }
     }
 
+    // Per-season statistical award winners (MVP + category leaders), in display order.
+    public class LeadersHandler : JsonHandler
+    {
+        protected override object Build()
+        {
+            return Query("SELECT category, name, team, value FROM dbo.leaders WHERE season = " + SeasonFilter("leaders") + " ORDER BY ord");
+        }
+    }
+
     // Teams that have a roster in the given season, with name + logo, for the team grid.
     public class TeamsHandler : JsonHandler
     {

@@ -21,8 +21,9 @@ const db = new sql.ConnectionPool({
 
 // ESPN abbreviation -> nbaapi (basketball-reference) abbreviation, where they differ.
 const NBAAPI_ABBR = { BKN: 'BRK', CHA: 'CHO', GS: 'GSW', NO: 'NOP', NY: 'NYK', PHX: 'PHO', SA: 'SAS', UTAH: 'UTA', WSH: 'WAS' };
-// The MVP ladder is maintained by hand (NBA.com Kia MVP Ladder); it is league-wide, shown on every team.
-const mvpLadder = ['Victor Wembanyama', 'Shai Gilgeous-Alexander', 'Nikola Jokic', 'Luka Doncic', 'Jaylen Brown'];
+// Fallback MVP names if a season has no stats yet (e.g. opening week). Normally the contenders are
+// computed per season from nbaapi stats, so each year differs.
+const mvpFallback = ['Victor Wembanyama', 'Shai Gilgeous-Alexander', 'Nikola Jokic', 'Luka Doncic', 'Jaylen Brown'];
 
 function currentSeasonEndYear(d = new Date()) { return (d.getMonth() + 1) >= 10 ? d.getFullYear() + 1 : d.getFullYear(); }
 const SEASONS = (process.env.NBA_SEASONS || String(process.env.NBA_SEASON || currentSeasonEndYear()))
@@ -110,22 +111,45 @@ async function fetchSchedule(teamId, season) {
   return { played: finished.length, remaining: upcoming.length, playoffStart: playoffStart || 'TBD', lastGames };
 }
 
-async function fetchMvp(season) {
-  let byName = new Map();
+// Every player league-wide for a season, deduped by name (keep most games).
+async function fetchLeague(season) {
+  let all = [];
   try {
-    const res = await axios.get('https://api.server.nbaapi.com/api/playertotals', { params: { season, pageSize: 500, page: 1 }, timeout: 15000 });
-    for (const p of res.data?.data || []) {
-      const k = normalize(p.playerName), e = byName.get(k);
-      if (!e || parseInt(p.games || 0) > parseInt(e.games || 0)) byName.set(k, p);
+    for (let page = 1; page <= 4; page++) {
+      const res = await axios.get('https://api.server.nbaapi.com/api/playertotals', { params: { season, isPlayoff: false, pageSize: 500, page }, timeout: 20000 });
+      const data = res.data?.data || []; all = all.concat(data);
+      if (data.length < 500) break;
     }
-  } catch (err) { console.error('  MVP fetch failed:', err.message); }
-  return mvpLadder.map((ladderName, i) => {
-    const p = byName.get(normalize(ladderName)); const gp = parseInt(p?.games || 1, 10) || 1;
-    return { rank: i + 1, name: p?.playerName || ladderName, team: p?.team || '—',
-             ppg: p ? (parseFloat(p.points || 0) / gp).toFixed(1) : '—',
-             rpg: p ? (parseFloat(p.totalRb || 0) / gp).toFixed(1) : '—',
-             apg: p ? (parseFloat(p.assists || 0) / gp).toFixed(1) : '—' };
-  });
+  } catch (err) { console.error('  league fetch failed:', err.message); }
+  const m = new Map();
+  for (const p of all) { const k = normalize(p.playerName), e = m.get(k); if (!e || parseInt(p.games || 0, 10) > parseInt(e.games || 0, 10)) m.set(k, p); }
+  return [...m.values()];
+}
+const perGame = (p) => { const gp = parseInt(p.games || 1, 10) || 1; return {
+  name: p.playerName, team: p.team, gp: parseInt(p.games || 0, 10),
+  pts: parseFloat(p.points || 0) / gp, reb: parseFloat(p.totalRb || 0) / gp, ast: parseFloat(p.assists || 0) / gp,
+  stl: parseFloat(p.steals || 0) / gp, blk: parseFloat(p.blocks || 0) / gp }; };
+
+// Per-season awards from the stats: the MVP race (top 5 by per-game impact) and the league leader in each category.
+// Falls back to a static MVP list only when a season has no stats yet (opening week).
+function seasonAwards(season, league) {
+  const maxG = league.reduce((m, p) => Math.max(m, parseInt(p.games || 0, 10)), 0);
+  const minG = Math.max(10, Math.floor(maxG * 0.5));   // scales: ~41 for a finished 82-game season, ~0 early on
+  const q = league.map(perGame).filter(p => p.gp >= minG);
+  if (!q.length) {
+    const contenders = mvpFallback.map((n, i) => ({ rank: i + 1, name: n, team: '—', ppg: '—', rpg: '—', apg: '—' }));
+    return { contenders, leaders: [] };
+  }
+  const scored = q.map(p => ({ ...p, score: p.pts + p.reb + p.ast + p.stl + p.blk })).sort((a, b) => b.score - a.score);
+  const contenders = scored.slice(0, 5).map((p, i) => ({ rank: i + 1, name: p.name, team: p.team, ppg: p.pts.toFixed(1), rpg: p.reb.toFixed(1), apg: p.ast.toFixed(1) }));
+  const top = (key) => q.slice().sort((a, b) => b[key] - a[key])[0];
+  const cat = (label, key, unit) => { const p = top(key); return { category: label, name: p.name, team: p.team, value: p[key].toFixed(1) + ' ' + unit }; };
+  const leaders = [
+    { category: 'MVP', name: scored[0].name, team: scored[0].team, value: scored[0].pts.toFixed(1) + ' PPG' },
+    cat('Points', 'pts', 'PPG'), cat('Rebounds', 'reb', 'RPG'), cat('Assists', 'ast', 'APG'),
+    cat('Steals', 'stl', 'SPG'), cat('Blocks', 'blk', 'BPG'),
+  ];
+  return { contenders, leaders };
 }
 
 const q = (text, params = {}) => { const r = db.request(); for (const [k, v] of Object.entries(params)) r.input(k, v); return r.query(text); };
@@ -168,10 +192,12 @@ async function sync() {
   for (const season of SEASONS) {
     let players = 0, done = 0;
     for (const t of teams) { players += await syncTeamSeason(t, season); done++; await sleep(120); }
-    const mvp = await fetchMvp(season);
+    const { contenders, leaders } = seasonAwards(season, await fetchLeague(season));
     await q('DELETE FROM dbo.mvp_contenders WHERE season = @season', { season });
-    for (const m of mvp) await q('INSERT dbo.mvp_contenders(season, [rank], name, team, ppg, rpg, apg) VALUES(@season, @rank, @name, @team, @ppg, @rpg, @apg)', { season, ...m });
-    console.log(`  season ${season} (${season - 1}-${String(season).slice(-2)}): ${done} teams, ${players} players, MVP updated`);
+    for (const m of contenders) await q('INSERT dbo.mvp_contenders(season, [rank], name, team, ppg, rpg, apg) VALUES(@season, @rank, @name, @team, @ppg, @rpg, @apg)', { season, ...m });
+    await q('DELETE FROM dbo.leaders WHERE season = @season', { season });
+    for (let i = 0; i < leaders.length; i++) await q('INSERT dbo.leaders(season, ord, category, name, team, value) VALUES(@season, @ord, @category, @name, @team, @value)', { season, ord: i, ...leaders[i] });
+    console.log(`  season ${season} (${season - 1}-${String(season).slice(-2)}): ${done} teams, ${players} players, ${leaders.length} category leaders`);
   }
   console.log('=== Sync complete ===');
 }
