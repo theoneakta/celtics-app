@@ -7,7 +7,8 @@ IF OBJECT_ID('dbo.players') IS NULL
 CREATE TABLE dbo.players (
     id            INT IDENTITY(1,1) PRIMARY KEY,
     num           VARCHAR(5),
-    name          NVARCHAR(100) NOT NULL CONSTRAINT UQ_players_name UNIQUE,
+    season        INT,
+    name          NVARCHAR(100) NOT NULL,
     pos           VARCHAR(10),
     ppg           VARCHAR(10) DEFAULT '0.0',
     rpg           VARCHAR(10) DEFAULT '0.0',
@@ -21,12 +22,15 @@ CREATE TABLE dbo.players (
     mpg           VARCHAR(10) DEFAULT '0.0',
     injury        NVARCHAR(100),
     injury_detail NVARCHAR(300),
-    espn_id       VARCHAR(20)
+    espn_id       VARCHAR(20),
+    updated_at    DATETIME,
+    CONSTRAINT UQ_players_season_name UNIQUE (season, name)
 );
 GO
 IF OBJECT_ID('dbo.mvp_contenders') IS NULL
 CREATE TABLE dbo.mvp_contenders (
     id     INT IDENTITY(1,1) PRIMARY KEY,
+    season INT,
     [rank] INT,
     name   NVARCHAR(100),
     team   VARCHAR(10),
@@ -43,23 +47,27 @@ CREATE TABLE dbo.schedule_info (
     remaining     INT,
     playoff_start VARCHAR(20),
     last_games    NVARCHAR(MAX),
-    updated_at    DATETIME
+    updated_at    DATETIME,
+    season        INT
 );
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_schedule_season' AND object_id = OBJECT_ID('dbo.schedule_info'))
+    CREATE UNIQUE INDEX UX_schedule_season ON dbo.schedule_info(season);
 GO
 -- Seed (same as init.sql; the feeder overwrites with live values)
 IF NOT EXISTS (SELECT 1 FROM dbo.players)
-INSERT INTO dbo.players (num, name, pos, ppg, rpg, apg, espn_id)
-SELECT '7',  N'Jaylen Brown',      'F/G', '29.5', '7.0', '4.7', '3917376' UNION ALL
-SELECT '0',  N'Jayson Tatum',      'F',   '18.4', '10.8','5.4', '4065648' UNION ALL
-SELECT '9',  N'Derrick White',     'G',   '17.4', '4.5', '5.5', '3062679' UNION ALL
-SELECT '11', N'Payton Pritchard',  'G',   '17.3', '4.2', '5.3', '4066349' UNION ALL
-SELECT '30', N'Sam Hauser',        'F',   '9.0',  '3.8', '1.4', '4066421' UNION ALL
-SELECT '88', N'Neemias Queta',     'C',   '9.9',  '8.4', '1.5', '4432165' UNION ALL
-SELECT '55', N'Baylor Scheierman', 'G',   '3.6',  '2.5', '0.9', '4431741' UNION ALL
-SELECT '27', N'Jordan Walsh',      'F',   '5.5',  '4.3', '0.8', '4683777' UNION ALL
-SELECT '52', N'Luka Garza',        'C',   '5.1',  '3.8', '0.6', '4278060' UNION ALL
-SELECT '28', N'Hugo Gonz' + NCHAR(225) + N'lez', 'F', '3.9', '3.4', '0.6', '5105088' UNION ALL
-SELECT '13', N'Ron Harper Jr.',    'F',   '6.2',  '3.8', '0.9', '4432805';
+INSERT INTO dbo.players (season, num, name, pos, ppg, rpg, apg, espn_id)
+SELECT 2026, '7',  N'Jaylen Brown',      'F/G', '29.5', '7.0', '4.7', '3917376' UNION ALL
+SELECT 2026, '0',  N'Jayson Tatum',      'F',   '18.4', '10.8','5.4', '4065648' UNION ALL
+SELECT 2026, '9',  N'Derrick White',     'G',   '17.4', '4.5', '5.5', '3062679' UNION ALL
+SELECT 2026, '11', N'Payton Pritchard',  'G',   '17.3', '4.2', '5.3', '4066349' UNION ALL
+SELECT 2026, '30', N'Sam Hauser',        'F',   '9.0',  '3.8', '1.4', '4066421' UNION ALL
+SELECT 2026, '88', N'Neemias Queta',     'C',   '9.9',  '8.4', '1.5', '4432165' UNION ALL
+SELECT 2026, '55', N'Baylor Scheierman', 'G',   '3.6',  '2.5', '0.9', '4431741' UNION ALL
+SELECT 2026, '27', N'Jordan Walsh',      'F',   '5.5',  '4.3', '0.8', '4683777' UNION ALL
+SELECT 2026, '52', N'Luka Garza',        'C',   '5.1',  '3.8', '0.6', '4278060' UNION ALL
+SELECT 2026, '28', N'Hugo Gonz' + NCHAR(225) + N'lez', 'F', '3.9', '3.4', '0.6', '5105088' UNION ALL
+SELECT 2026, '13', N'Ron Harper Jr.',    'F',   '6.2',  '3.8', '0.9', '4432805';
 GO
 -- Web app: IIS app pool identity, read-only
 IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'IIS APPPOOL\Celtics')

@@ -53,3 +53,14 @@ SQL Server 2005 only supports TLS 1.0 for the login handshake. The feeder's `ted
 - The MVP ladder (`mvpLadder`) and the fallback stats are maintained by hand in the code.
 - `mpg` holds nbaapi.com's `minutesPg`, which is a season total. The page doesn't display it.
 - Windows Server 2008 R2 and SQL Server 2005 are long out of support. Run the legacy version isolated: no internet, and only the ports you need open.
+
+## Seasons (year dropdown)
+
+The **`iis-sql2005/` + `feeder/`** variant is season-aware (added 2026-10):
+
+- The `players`, `mvp_contenders` and `schedule_info` tables carry a `season` column — the NBA season's **end year** (e.g. `2027` = the 2026-27 season). Run `iis-sql2005/migrate-seasons.sql` once on an existing `roster_db` to add it; `roster_db.sql` already includes it for fresh installs.
+- The feeder pulls the **current roster live from ESPN** (`/teams/2/roster`) instead of a hardcoded list, plus stats from nbaapi.com and the schedule from ESPN, and writes them tagged with the season. It syncs the current season by default; set `NBA_SEASONS="2027,2026"` to sync several. Early in a season (before games are played) nbaapi has no stats yet, so per-game fields show `0.0` until then.
+- The API gains `/api/seasons` (distinct seasons + the current one) and every data endpoint accepts `?season=YYYY`, defaulting to the newest.
+- The page has a **year dropdown** that lists the available seasons and reloads the roster, MVP and schedule for the chosen one.
+
+The **`docker/`** variant stays as the original single-season reference (Node writes one season; no `/api/seasons`).

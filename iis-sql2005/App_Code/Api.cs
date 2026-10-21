@@ -52,12 +52,22 @@ namespace Celtics
         }
     }
 
+        // The season filter is an integer parsed from ?season=; falls back to the newest season in that table.
+        protected static string SeasonFilter(string table)
+        {
+            string raw = HttpContext.Current.Request.QueryString["season"];
+            int season;
+            if (int.TryParse(raw, out season)) return season.ToString();
+            return "(SELECT MAX(season) FROM dbo." + table + ")";
+        }
+    }
+
     public class RosterHandler : JsonHandler
     {
         protected override object Build()
         {
-            return Query("SELECT id, num, name, pos, ppg, rpg, apg, spg, bpg, fgp, tpp, ftp, gp, mpg, injury, injury_detail, espn_id " +
-                         "FROM dbo.players ORDER BY CAST(num AS INT)");
+            return Query("SELECT id, season, num, name, pos, ppg, rpg, apg, spg, bpg, fgp, tpp, ftp, gp, mpg, injury, injury_detail, espn_id " +
+                         "FROM dbo.players WHERE season = " + SeasonFilter("players") + " ORDER BY CAST(num AS INT)");
         }
     }
 
@@ -65,7 +75,31 @@ namespace Celtics
     {
         protected override object Build()
         {
-            return Query("SELECT id, [rank], name, team, ppg, rpg, apg FROM dbo.mvp_contenders ORDER BY [rank]");
+            return Query("SELECT id, season, [rank], name, team, ppg, rpg, apg FROM dbo.mvp_contenders WHERE season = " + SeasonFilter("mvp_contenders") + " ORDER BY [rank]");
+        }
+    }
+
+    // Distinct seasons available (newest first), with the current (max) one flagged, for the year dropdown.
+    public class SeasonsHandler : JsonHandler
+    {
+        protected override object Build()
+        {
+            List<Dictionary<string, object>> rows = Query("SELECT DISTINCT season FROM dbo.players WHERE season IS NOT NULL ORDER BY season DESC");
+            List<object> seasons = new List<object>();
+            int current = 0;
+            foreach (Dictionary<string, object> r in rows)
+            {
+                int y = Convert.ToInt32(r["season"]);
+                if (current == 0) current = y;
+                Dictionary<string, object> o = new Dictionary<string, object>();
+                o["season"] = y;
+                o["label"] = (y - 1).ToString() + "-" + (y % 100).ToString("D2");  // 2027 -> "2026-27"
+                seasons.Add(o);
+            }
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            result["current"] = current;
+            result["seasons"] = seasons;
+            return result;
         }
     }
 
@@ -73,7 +107,7 @@ namespace Celtics
     {
         protected override object Build()
         {
-            List<Dictionary<string, object>> rows = Query("SELECT played, remaining, playoff_start, last_games, updated_at FROM dbo.schedule_info WHERE id = 1");
+            List<Dictionary<string, object>> rows = Query("SELECT played, remaining, playoff_start, last_games, updated_at FROM dbo.schedule_info WHERE season = " + SeasonFilter("schedule_info"));
             Dictionary<string, object> o = new Dictionary<string, object>();
             if (rows.Count == 0) throw new Exception("schedule not synced yet");
             Dictionary<string, object> s = rows[0];

@@ -85,7 +85,9 @@
 
   <div class="header">
     <h1>Boston<br><span>Celtics</span></h1>
-    <div style="font-family: 'Bebas Neue'; font-size: 32px;">2025-26</div>
+    <select id="seasonSelect" onchange="loadSeason(this.value)"
+            style="font-family:'Bebas Neue',sans-serif; font-size:28px; background:#111; color:var(--green); border:1px solid #333; border-radius:6px; padding:4px 10px; cursor:pointer;">
+    </select>
   </div>
 
   <div class="controls">
@@ -104,10 +106,38 @@
 </div>
 
 <script>
+// The API is served from the same origin (IIS). Empty base = relative paths.
+const API = '';
+let currentSeason = null;
 
-async function loadSchedule() {
+// Build the year dropdown from /api/seasons, select the current season, then load everything.
+async function initSeasons() {
   try {
-    const res  = await fetch('/api/schedule');
+    const res = await fetch(API + '/api/seasons');
+    if (!res.ok) throw new Error('seasons fetch failed');
+    const data = await res.json();
+    const sel = document.getElementById('seasonSelect');
+    sel.innerHTML = (data.seasons || []).map(s => `<option value="${s.season}">${s.label}</option>`).join('');
+    currentSeason = data.current;
+    if (currentSeason) sel.value = String(currentSeason);
+  } catch (e) {
+    console.error('seasons load failed', e);
+  }
+  loadSeason(currentSeason);
+}
+
+function loadSeason(season) {
+  currentSeason = season;
+  loadSchedule(season);
+  loadRosterFromDB(season);
+  loadMvp(season);
+}
+
+const seasonQ = (s) => (s ? '?season=' + encodeURIComponent(s) : '');
+
+async function loadSchedule(season) {
+  try {
+    const res  = await fetch(API + '/api/schedule' + seasonQ(season));
     if (!res.ok) throw new Error('Schedule fetch failed');
     const data = await res.json();
 
@@ -128,9 +158,9 @@ async function loadSchedule() {
   }
 }
 
-async function loadMvp() {
+async function loadMvp(season) {
   try {
-    const res = await fetch('/api/mvp');
+    const res = await fetch(API + '/api/mvp' + seasonQ(season));
     if (!res.ok) throw new Error('MVP fetch failed');
     const contenders = await res.json();
     const rankClass = ['gold', 'silver', 'bronze'];
@@ -156,10 +186,9 @@ async function loadMvp() {
 let players = [];
 
 // 2. Fetch data from your backend
-async function loadRosterFromDB() {
+async function loadRosterFromDB(season) {
   try {
-    // Using your specific IP address
-    const response = await fetch('/api/roster');
+    const response = await fetch(API + '/api/roster' + seasonQ(season));
     if (!response.ok) throw new Error('Network response was not ok');
     
     players = await response.json();
@@ -214,10 +243,8 @@ function render() {
   });
 }
 
-// Initial Load
-loadSchedule();
-loadRosterFromDB();
-loadMvp();
+// Initial load: build the season dropdown, then load the current season
+initSeasons();
 </script>
 </body>
 </html>

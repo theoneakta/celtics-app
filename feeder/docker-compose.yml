@@ -8,7 +8,8 @@ services:
     env_file: .env
     environment:
       DB_USER: celtics_feeder
-      NBA_SEASON: "2026"
+      # Season to sync defaults to the current NBA season (end-year). Override with NBA_SEASONS="2027,2026" to sync several.
+      # NBA_SEASONS: "2027"
     logging:
       driver: json-file
       options: { max-size: "5m", max-file: "3" }
